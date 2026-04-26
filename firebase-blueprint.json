@@ -1,0 +1,114 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A cosmetic product available for sale.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Display name of the product" },
+        "price": { "type": "number", "description": "Price in local currency" },
+        "imageUrl": { "type": "string", "description": "Public URL for the product image" },
+        "description": { "type": "string", "description": "Detailed product information" },
+        "category": { "type": "string", "description": "Product category (e.g., Skincare, Makeup)" },
+        "stock": { "type": "number", "description": "Available inventory count" }
+      },
+      "required": ["name", "price", "imageUrl", "description"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User profile information and permissions.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "Firebase Auth UID" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["user", "admin"] }
+      },
+      "required": ["uid", "email", "role"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer purchase order.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "ID of the user who placed the order (null for guest)" },
+        "items": { "type": "array", "description": "List of items in the order" },
+        "total": { "type": "number", "description": "Total order amount" },
+        "status": { "type": "string", "enum": ["pending", "confirmed", "shipping", "completed"] },
+        "customerInfo": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "phone": { "type": "string" },
+            "address": { "type": "string" }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["items", "total", "status", "customerInfo", "createdAt"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "A user's review for a product.",
+      "type": "object",
+      "properties": {
+        "productId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["productId", "userId", "userName", "rating", "comment", "createdAt"]
+    },
+    "Blog": {
+      "title": "Blog",
+      "description": "A beauty trend blog post.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "excerpt": { "type": "string" },
+        "content": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "author": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "excerpt", "content", "imageUrl"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A product category.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    }
+  },
+  "firestore": {
+    "products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of cosmetic products."
+    },
+    "categories/{categoryId}": {
+      "schema": "Category",
+      "description": "Collection of product categories."
+    },
+    "users/{userId}": {
+      "schema": "User",
+      "description": "Collection of user profiles."
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Collection of customer orders."
+    },
+    "reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Collection of product reviews."
+    },
+    "blogs/{blogId}": {
+      "schema": "Blog",
+      "description": "Beauty trends and blog posts."
+    }
+  }
+}
