@@ -462,6 +462,7 @@ function ProductManagement() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
+  const [existingBrands, setExistingBrands] = useState<string[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({
     name: '', price: 0, imageUrl: '', category: 'Chăm sóc da', stock: 10, onFlashSale: false, flashSaleDiscount: 0,
@@ -475,7 +476,13 @@ function ProductManagement() {
 
   const fetchCategories = async () => {
     const res = await safeFetchColl('categories');
-    setCategories(res.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
+    const cats = res.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+    setCategories(cats);
+    
+    // Đảm bảo có danh mục mặc định nếu đang tạo mới và chưa chọn
+    if (!currentProduct.id && cats.length > 0 && !currentProduct.category) {
+      setCurrentProduct(prev => ({ ...prev, category: cats[0].name }));
+    }
   };
 
   const fetchProducts = async () => {
@@ -483,6 +490,10 @@ function ProductManagement() {
     try {
       const res = await safeFetchColl('products');
       let allProducts = res.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Product));
+      
+      // Thu thập danh sách thương hiệu duy nhất để gợi ý
+      const brands = Array.from(new Set(allProducts.map(p => p.brand).filter(Boolean))) as string[];
+      setExistingBrands(brands.sort());
       
       const catFilter = searchParams.get('category');
       if (catFilter) {
@@ -530,9 +541,13 @@ function ProductManagement() {
 
       const productData = { 
         ...currentProduct, 
+        name: currentProduct.name?.trim(),
+        category: currentProduct.category?.trim(),
+        brand: currentProduct.brand?.trim(),
         imageUrl: finalImageUrl,
         gallery: galleryText ? galleryText.split(',').map(s => s.trim()) : [],
         features: featuresText ? featuresText.split('\n').map(s => s.trim()).filter(s => s) : [],
+        stock: Number(currentProduct.stock) || 0,
         updatedAt: serverTimestamp() 
       };
 
@@ -694,11 +709,15 @@ function ProductManagement() {
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold tracking-widest text-brand-500 ml-4">Thương hiệu</label>
               <input 
+                list="brand-suggestions"
                 value={currentProduct.brand}
                 onChange={(e) => setCurrentProduct({...currentProduct, brand: e.target.value})}
                 placeholder="vd: Q&H Lumina"
                 className="w-full bg-white rounded-2xl px-6 py-4 outline-none focus:ring-1 focus:ring-brand-200"
               />
+              <datalist id="brand-suggestions">
+                {existingBrands.map(brand => <option key={brand} value={brand} />)}
+              </datalist>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] uppercase font-bold tracking-widest text-brand-500 ml-4">Trọng lượng</label>
