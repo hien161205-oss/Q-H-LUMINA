@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Product } from '../types';
 import { formatPrice } from '../lib/utils';
@@ -20,29 +20,33 @@ export default function CategoryPage() {
   const [maxPrice, setMaxPrice] = useState(5000000);
   const { buyNow, addToCart, setIsCartOpen } = useCart();
 
+  // Hàm chuyển đổi tên danh mục sang slug để so sánh chính xác
+  const slugify = (text: string) => text.toLowerCase().replace(/\s+/g, '-').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+
   useEffect(() => {
     const fetchCategoryProducts = async () => {
       setLoading(true);
       try {
-        // Try to find the actual category name if the slug matches
         const catsSnap = await getDocs(collection(db, 'categories'));
-        let foundName = '';
         const allCategories = catsSnap.docs.map(d => d.data().name);
         
-        // Fallback names if Firebase categories collection is empty or inaccessible
         const defaultCats = ['Chăm sóc da', 'Trang điểm', 'Nước hoa', 'Chăm sóc cơ thể'];
         const searchCats = allCategories.length > 0 ? allCategories : defaultCats;
 
-        foundName = searchCats.find(name => name.toLowerCase().replace(/\s+/g, '-') === categoryId) || 'Danh mục';
+        // Tìm tên danh mục gốc dựa trên slug trên URL
+        const foundName = searchCats.find(name => slugify(name) === categoryId) || 'Chăm sóc da';
         setDisplayName(foundName);
 
         const q = query(
           collection(db, 'products'),
-          where('category', '==', foundName),
-          orderBy('name')
+          where('category', '==', foundName)
         );
+        
         const snap = await getDocs(q);
-        const fetchedProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        const fetchedProducts = snap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() } as Product))
+          .sort((a, b) => a.name.localeCompare(b.name)); // Sắp xếp tại client để tránh lỗi Index
+
         setProducts(fetchedProducts);
         
         // Extract unique brands

@@ -168,10 +168,10 @@ function Navbar({ user, cartCount, setIsCartOpen, setIsLoginModalOpen }: { user:
         // Silent fallback to defaults to avoid permission error popups for users
         setCategories([
           { id: 'all', label: 'TẤT CẢ' },
-          { id: 'skincare', label: 'CHĂM SÓC DA' },
-          { id: 'makeup', label: 'TRANG ĐIỂM' },
-          { id: 'fragrance', label: 'NƯỚC HOA' },
-          { id: 'bodycare', label: 'CHĂM SÓC CƠ THỂ' },
+          { id: 'cham-soc-da', label: 'CHĂM SÓC DA' },
+          { id: 'trang-diem', label: 'TRANG ĐIỂM' },
+          { id: 'nuoc-hoa', label: 'NƯỚC HOA' },
+          { id: 'cham-soc-co-the', label: 'CHĂM SÓC CƠ THỂ' },
           { id: 'blog', label: 'XU HƯỚNG LÀM ĐẸP' }
         ]);
       }
