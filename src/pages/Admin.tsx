@@ -31,7 +31,8 @@ import {
   collection, 
   query, 
   getDocs, 
-  doc, 
+  doc,
+  onSnapshot,
   addDoc, 
   updateDoc, 
   deleteDoc, 
@@ -165,7 +166,36 @@ function CategoryManagement() {
     }
   };
 
-  useEffect(() => { fetchCategoryStats(); }, []);
+  useEffect(() => {
+    setLoading(true);
+    // Lắng nghe real-time cả categories và products để tính toán số lượng tự động
+    const unsubCats = onSnapshot(collection(db, 'categories'), (catSnap) => {
+      const catsData = catSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      
+      const unsubProds = onSnapshot(collection(db, 'products'), (prodSnap) => {
+        const products = prodSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        
+        const stats = catsData.map((cat: any) => {
+          const cName = String(cat.name || '').trim().toLowerCase();
+          const catProds = products.filter((p: Product) => String(p.category || '').trim().toLowerCase() === cName);
+          
+          return {
+            id: cat.id,
+            name: cat.name || 'Chưa đặt tên',
+            productCount: catProds.length,
+            totalStock: catProds.reduce((acc: number, p: Product) => acc + (Number(p.stock) || 0), 0)
+          };
+        });
+
+        setCategories(stats);
+        setLoading(false);
+      });
+
+      return () => unsubProds();
+    });
+
+    return () => unsubCats();
+  }, []);
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -474,41 +504,39 @@ function ProductManagement() {
   const [adminSearch, setAdminSearch] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const fetchCategories = async () => {
-    const res = await safeFetchColl('categories');
-    const cats = res.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
-    setCategories(cats);
-    
-    // Đảm bảo có danh mục mặc định nếu đang tạo mới và chưa chọn
-    if (!currentProduct.id && cats.length > 0 && !currentProduct.category) {
-      setCurrentProduct(prev => ({ ...prev, category: cats[0].name }));
-    }
-  };
-
-  const fetchProducts = async () => {
+  useEffect(() => {
     setLoading(true);
-    try {
-      const res = await safeFetchColl('products');
-      let allProducts = res.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Product));
+    
+    // Tự động cập nhật danh sách danh mục trong form
+    const unsubCats = onSnapshot(collection(db, 'categories'), (snap) => {
+      const cats = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
+      const sorted = cats.sort((a, b) => a.name.localeCompare(b.name));
+      setCategories(sorted);
+      if (!currentProduct.id && sorted.length > 0 && !currentProduct.category) {
+        setCurrentProduct(prev => ({ ...prev, category: sorted[0].name }));
+      }
+    });
+
+    // Tự động cập nhật danh sách sản phẩm và gợi ý thương hiệu (datalist)
+    const unsubProds = onSnapshot(collection(db, 'products'), (snap) => {
+      let allProducts = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
       
-      // Thu thập danh sách thương hiệu duy nhất để gợi ý
       const brands = Array.from(new Set(allProducts.map(p => p.brand).filter(Boolean))) as string[];
       setExistingBrands(brands.sort());
       
       const catFilter = searchParams.get('category');
       if (catFilter) {
-        allProducts = allProducts.filter((p: Product) => p.category === catFilter);
+        allProducts = allProducts.filter(p => p.category === catFilter);
       }
-      setProducts(allProducts.sort((a: Product, b: Product) => a.name.localeCompare(b.name)));
-    } finally {
+      setProducts(allProducts.sort((a, b) => a.name.localeCompare(b.name)));
       setLoading(false);
-    }
-  };
+    });
 
-  useEffect(() => { 
-    fetchProducts();
-    fetchCategories();
-  }, [searchParams]);
+    return () => {
+      unsubCats();
+      unsubProds();
+    };
+  }, [searchParams, currentProduct.id]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -541,9 +569,9 @@ function ProductManagement() {
 
       const productData = { 
         ...currentProduct, 
-        name: currentProduct.name?.trim(),
-        category: currentProduct.category?.trim(),
-        brand: currentProduct.brand?.trim(),
+        name: currentProduct.name?.trim() || '',
+        category: currentProduct.category?.trim() || 'Chăm sóc da',
+        brand: currentProduct.brand?.trim() || '',
         imageUrl: finalImageUrl,
         gallery: galleryText ? galleryText.split(',').map(s => s.trim()) : [],
         features: featuresText ? featuresText.split('\n').map(s => s.trim()).filter(s => s) : [],
@@ -564,7 +592,6 @@ function ProductManagement() {
       setGalleryText('');
       setFeaturesText('');
       setImageFile(null);
-      fetchProducts();
     } catch (error: any) {
       console.error("Save ritual failed critically:", error);
       toast.error(`Divine rejection: ${error.message}`);
@@ -578,7 +605,6 @@ function ProductManagement() {
     if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?')) {
       await deleteDoc(doc(db, 'products', id));
       toast.success('Sản phẩm đã được xóa');
-      fetchProducts();
     }
   };
 

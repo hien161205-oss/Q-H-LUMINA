@@ -378,10 +378,10 @@ export default function Home() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { id: 'skincare', label: 'Chăm sóc da', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=600&auto=format&fit=crop' },
-            { id: 'makeup', label: 'Trang điểm', image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=600&auto=format&fit=crop' },
-            { id: 'fragrance', label: 'Nước hoa', image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?q=80&w=600&auto=format&fit=crop' },
-            { id: 'bodycare', label: 'Chăm sóc cơ thể', image: 'https://images.unsplash.com/photo-1549439602-43ebcb232811?q=80&w=600&auto=format&fit=crop' }
+            { id: 'cham-soc-da', label: 'Chăm sóc da', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=600&auto=format&fit=crop' },
+            { id: 'trang-diem', label: 'Trang điểm', image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=600&auto=format&fit=crop' },
+            { id: 'nuoc-hoa', label: 'Nước hoa', image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?q=80&w=600&auto=format&fit=crop' },
+            { id: 'cham-soc-co-the', label: 'Chăm sóc cơ thể', image: 'https://images.unsplash.com/photo-1549439602-43ebcb232811?q=80&w=600&auto=format&fit=crop' }
           ].map((cat, idx) => (
             <motion.button
               key={cat.id}

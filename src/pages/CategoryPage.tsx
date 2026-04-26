@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, getDocs } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { Product } from '../types';
 import { formatPrice } from '../lib/utils';
@@ -20,53 +20,54 @@ export default function CategoryPage() {
   const [maxPrice, setMaxPrice] = useState(5000000);
   const { buyNow, addToCart, setIsCartOpen } = useCart();
 
-  // Hàm chuyển đổi tên danh mục sang slug để so sánh chính xác
-  const slugify = (text: string) => text.toLowerCase().replace(/\s+/g, '-').normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d");
+  // Hàm slugify chuẩn để khớp với Header
+  const slugify = (text: string) => 
+    text.toLowerCase().trim()
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/đ/g, "d")
+      .replace(/\s+/g, '-');
 
   useEffect(() => {
-    const fetchCategoryProducts = async () => {
-      setLoading(true);
-      try {
-        const catsSnap = await getDocs(collection(db, 'categories'));
-        const allCategories = catsSnap.docs.map(d => d.data().name);
-        
-        const defaultCats = ['Chăm sóc da', 'Trang điểm', 'Nước hoa', 'Chăm sóc cơ thể'];
-        const searchCats = allCategories.length > 0 ? allCategories : defaultCats;
+    let unsubProducts: (() => void) | undefined;
+    setLoading(true);
+    setSelectedBrands([]); // Reset bộ lọc thương hiệu khi đổi danh mục
+    setActivePriceRange(null); // Reset bộ lọc giá khi đổi danh mục
 
-        // Tìm tên danh mục gốc dựa trên slug trên URL
-        const foundName = searchCats.find(name => slugify(name) === categoryId) || 'Chăm sóc da';
+    // Lấy danh sách danh mục để ánh xạ slug (URL) sang tên gốc trong Database
+    getDocs(collection(db, 'categories')).then(catsSnap => {
+      const searchCats = catsSnap.docs.map(d => d.data().name as string);
+      const foundName = searchCats.find(name => slugify(name) === categoryId);
+
+      if (foundName) {
         setDisplayName(foundName);
-
-        const q = query(
-          collection(db, 'products'),
-          where('category', '==', foundName)
-        );
+        const q = query(collection(db, 'products'), where('category', '==', foundName));
         
-        const snap = await getDocs(q);
-        const fetchedProducts = snap.docs
-          .map(doc => ({ id: doc.id, ...doc.data() } as Product))
-          .sort((a, b) => a.name.localeCompare(b.name)); // Sắp xếp tại client để tránh lỗi Index
+        unsubProducts = onSnapshot(q, (snap) => {
+          const fetched = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+          const sorted = fetched.sort((a, b) => a.name.localeCompare(b.name));
+          setProducts(sorted);
+          
+          // Tự động cập nhật thương hiệu: lấy từ field brand HOẶC trích xuất từ features
+          const brands = Array.from(new Set(fetched.map(p => {
+            if (p.brand?.trim()) return p.brand.trim();
+            // Tìm trong features nếu field brand trống
+            const brandFeat = p.features?.find(f => f.toLowerCase().includes('thương hiệu'));
+            return brandFeat?.includes(':') ? brandFeat.split(':')[1].trim() : null;
+          }).filter(Boolean))) as string[];
 
-        setProducts(fetchedProducts);
-        
-        // Extract unique brands
-        const brands = Array.from(new Set(fetchedProducts.map(p => {
-          if (p.brand) return p.brand;
-          const brandFeature = p.features?.find(f => f.toLowerCase().includes('thương hiệu'));
-          if (brandFeature && brandFeature.includes(':')) {
-            return brandFeature.split(':')[1].trim();
-          }
-          return null;
-        }).filter(Boolean))) as string[];
-        setAllBrands(brands);
-      } catch (err) {
-        console.error('Error fetching category products:', err);
-      } finally {
+          setAllBrands(brands.sort());
+          setLoading(false);
+        });
+      } else {
         setLoading(false);
       }
-    };
-    fetchCategoryProducts();
+    }).catch(err => {
+      console.error('Lỗi truy vấn danh mục:', err);
+      setLoading(false);
+    });
+
     window.scrollTo(0, 0);
+    return () => { if (unsubProducts) unsubProducts(); };
   }, [categoryId]);
 
   const toggleBrand = (brand: string) => {
@@ -91,8 +92,8 @@ export default function CategoryPage() {
     const brandMatch = selectedBrands.length === 0 || (brandName && selectedBrands.includes(brandName));
     let priceMatch = true;
     if (activePriceRange) {
-        if (activePriceRange.min !== undefined && p.price < activePriceRange.min) priceMatch = false;
-        if (activePriceRange.max !== undefined && p.price > activePriceRange.max) priceMatch = false;
+        if (activePriceRange.min !== undefined && p.price < (activePriceRange.min || 0)) priceMatch = false;
+        if (activePriceRange.max !== undefined && p.price > (activePriceRange.max || Infinity)) priceMatch = false;
     }
     return brandMatch && priceMatch;
   });
@@ -130,9 +131,15 @@ export default function CategoryPage() {
                           type="checkbox" 
                           checked={selectedBrands.includes(brand)}
                           onChange={() => toggleBrand(brand)}
-                          className="peer w-6 h-6 rounded-lg border-gray-300 text-brand-500 focus:ring-brand-500 cursor-pointer appearance-none border-2 transition-all checked:bg-brand-500 checked:border-brand-500 shadow-sm"
+                          className={cn(
+                            "w-6 h-6 rounded-lg border-2 cursor-pointer appearance-none transition-all shadow-sm",
+                            selectedBrands.includes(brand) ? "bg-brand-500 border-brand-500" : "border-gray-300 bg-white"
+                          )}
                         />
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 peer-checked:opacity-100 text-white transition-opacity">
+                        <div className={cn(
+                          "absolute inset-0 flex items-center justify-center pointer-events-none text-white transition-opacity",
+                          selectedBrands.includes(brand) ? "opacity-100" : "opacity-0"
+                        )}>
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         </div>
                       </div>
@@ -163,15 +170,24 @@ export default function CategoryPage() {
                     <div className="relative flex items-center">
                         <input 
                           type="checkbox" 
-                          checked={activePriceRange === option}
-                          onChange={() => setActivePriceRange(activePriceRange === option ? null : option)}
-                          className="peer w-6 h-6 rounded-lg border-gray-200 text-brand-500 focus:ring-brand-500 cursor-pointer appearance-none border-2 transition-all checked:bg-brand-500 checked:border-brand-500"
+                          checked={activePriceRange?.label === option.label}
+                          onChange={() => setActivePriceRange(activePriceRange?.label === option.label ? null : option)}
+                          className={cn(
+                            "w-6 h-6 rounded-lg border-2 cursor-pointer appearance-none transition-all",
+                            activePriceRange?.label === option.label ? "bg-brand-500 border-brand-500" : "border-gray-200 bg-white"
+                          )}
                         />
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-0 peer-checked:opacity-100 text-white">
+                        <div className={cn(
+                          "absolute inset-0 flex items-center justify-center pointer-events-none text-white transition-opacity",
+                          activePriceRange?.label === option.label ? "opacity-100" : "opacity-0"
+                        )}>
                             <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         </div>
                     </div>
-                    <span className={`text-sm tracking-tight transition-colors ${activePriceRange === option ? 'text-gray-900 font-medium' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                    <span className={cn(
+                      "text-sm tracking-tight transition-colors",
+                      activePriceRange?.label === option.label ? "text-gray-900 font-medium" : "text-gray-600 group-hover:text-gray-900"
+                    )}>
                       {option.label}
                     </span>
                  </label>

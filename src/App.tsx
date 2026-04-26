@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Link, useNavigate, useLocation 
 import { Toaster, toast } from 'react-hot-toast';
 import { User, LogOut, Menu, X, Search, ChevronRight, Facebook, Instagram, Heart, ShoppingBag } from 'lucide-react';
 import { onAuthStateChanged, signOut } from 'firebase/auth';
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, onSnapshot, collection } from 'firebase/firestore';
 import { auth, db } from './lib/firebase';
 import { UserProfile } from './types';
 import { formatPrice, cn } from './lib/utils';
@@ -147,36 +147,41 @@ function Navbar({ user, cartCount, setIsCartOpen, setIsLoginModalOpen }: { user:
   }, []);
 
   useEffect(() => {
-    const fetchCats = async () => {
-      try {
-        const snap = await getDocs(collection(db, 'categories'));
-        const dynamicCats = snap.docs.map(doc => {
-          const data = doc.data();
-          return { id: data.name.toLowerCase().replace(/\s+/g, '-'), label: data.name.toUpperCase() };
-        });
-        
-        if (dynamicCats.length > 0) {
-          setCategories([
-            { id: 'all', label: 'TẤT CẢ' },
-            ...dynamicCats,
-            { id: 'blog', label: 'XU HƯỚNG LÀM ĐẸP' }
-          ]);
-        } else {
-          throw new Error('Using defaults');
-        }
-      } catch (err) {
-        // Silent fallback to defaults to avoid permission error popups for users
+    const slugify = (text: string) => text.toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/\s+/g, '-');
+
+    const unsubscribe = onSnapshot(collection(db, 'categories'), (snap) => {
+      const dynamicCats = snap.docs.map(doc => ({
+        id: slugify(doc.data().name),
+        label: doc.data().name.toUpperCase()
+      }));
+
+      if (dynamicCats.length > 0) {
+        const priorityOrder = ['TRANG ĐIỂM', 'CHĂM SÓC DA', 'NƯỚC HOA', 'CHĂM SÓC CƠ THỂ'];
         setCategories([
           { id: 'all', label: 'TẤT CẢ' },
-          { id: 'cham-soc-da', label: 'CHĂM SÓC DA' },
+          ...dynamicCats.sort((a, b) => {
+            const indexA = priorityOrder.indexOf(a.label);
+            const indexB = priorityOrder.indexOf(b.label);
+            if (indexA !== -1 && indexB !== -1) return indexA - indexB;
+            if (indexA !== -1) return -1;
+            if (indexB !== -1) return 1;
+            return a.label.localeCompare(b.label);
+          }),
+          { id: 'blog', label: 'XU HƯỚNG LÀM ĐẸP' }
+        ]);
+      } else {
+        setCategories([
+          { id: 'all', label: 'TẤT CẢ' },
           { id: 'trang-diem', label: 'TRANG ĐIỂM' },
+          { id: 'cham-soc-da', label: 'CHĂM SÓC DA' },
           { id: 'nuoc-hoa', label: 'NƯỚC HOA' },
           { id: 'cham-soc-co-the', label: 'CHĂM SÓC CƠ THỂ' },
           { id: 'blog', label: 'XU HƯỚNG LÀM ĐẸP' }
         ]);
       }
-    };
-    fetchCats();
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
