@@ -433,7 +433,7 @@ function RelatedProducts({ category, currentId }: { category: string, currentId:
             </button>
           </div>
           <div className="space-y-2">
-            <h4 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] uppercase tracking-tight group-hover:text-brand-500 transition-colors">{p.name}</h4>
+            <h4 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] uppercase tracking-tight">{p.name}</h4>
             <p className="text-lg font-black text-gray-900">{formatPrice(p.price)}</p>
           </div>
         </motion.div>
@@ -441,4 +441,3 @@ function RelatedProducts({ category, currentId }: { category: string, currentId:
     </>
   );
 }
-

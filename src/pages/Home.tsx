@@ -32,6 +32,10 @@ export default function Home() {
   const itemsPerPage = 4;
   const totalPages = Math.ceil(bestSellers.length / itemsPerPage);
   
+  const [flashSaleIndex, setFlashSaleIndex] = useState(0);
+  const flashSaleProducts = products.filter(p => p.onFlashSale);
+  const flashSaleTotalPages = Math.ceil(flashSaleProducts.length / itemsPerPage);
+
   // Latest Products carousel
   const [latestProductsIndex, setLatestProductsIndex] = useState(0);
   const latestProducts = [...products]
@@ -188,44 +192,68 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
-              {products.filter(p => p.onFlashSale).slice(0, 4).map((p) => (
-                <div 
-                  key={p.id} 
-                  className="bg-white rounded-[2rem] p-6 border border-brand-50 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group cursor-pointer relative"
-                  onClick={() => navigate(`/product/${p.id}`)}
-                >
-                    <div className="absolute top-4 right-4 z-10">
-                      <span className="bg-brand-600 text-white text-xs font-black px-2 py-1 rounded-sm shadow-lg shadow-brand-200">-{p.flashSaleDiscount || 25}%</span>
-                    </div>
-                    <div className="aspect-square relative overflow-hidden rounded-2xl mb-6">
-                      <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-                      <button 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          addToCart(p);
-                          setIsCartOpen(true);
-                        }}
-                        className="absolute bottom-3 right-3 bg-brand-500 text-white p-3 rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-brand-600 active:scale-95 z-20"
-                        title="Thêm vào giỏ"
+            <div className="relative group overflow-hidden">
+              <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${flashSaleIndex * 100}%)` }}>
+                {Array.from({ length: flashSaleTotalPages }).map((_, pageIdx) => (
+                  <div key={pageIdx} className="w-full flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-8">
+                    {flashSaleProducts.slice(pageIdx * itemsPerPage, (pageIdx + 1) * itemsPerPage).map((p) => (
+                      <div 
+                        key={p.id} 
+                        className="bg-white rounded-[2rem] p-6 border border-brand-50 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group cursor-pointer relative"
+                        onClick={() => navigate(`/product/${p.id}`)}
                       >
-                        <ShoppingBag className="w-5 h-5" />
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] leading-snug uppercase tracking-tight group-hover:text-brand-500 transition-colors">{p.name}</h4>
-                      <div className="flex flex-col">
-                        <span className="text-brand-500 font-black text-lg">
-                          {formatPrice(p.price * (1 - (p.flashSaleDiscount || 25) / 100))}
-                        </span>
-                        <span className="text-xs text-gray-300 line-through font-medium">{formatPrice(p.price)}</span>
+                        <div className="absolute top-4 right-4 z-10">
+                          <span className="bg-brand-600 text-white text-xs font-black px-2 py-1 rounded-sm shadow-lg shadow-brand-200">-{p.flashSaleDiscount || 25}%</span>
+                        </div>
+                        <div className="aspect-square relative overflow-hidden rounded-2xl mb-6">
+                          <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              addToCart(p);
+                              setIsCartOpen(true);
+                            }}
+                            className="absolute bottom-3 right-3 bg-brand-500 text-white p-3 rounded-xl shadow-xl opacity-0 group-hover:opacity-100 transition-all hover:bg-brand-600 active:scale-95 z-20"
+                            title="Thêm vào giỏ"
+                          >
+                            <ShoppingBag className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <div className="space-y-2">
+                          <h4 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] leading-snug uppercase tracking-tight">{p.name}</h4>
+                          <div className="flex flex-col">
+                            <span className="text-brand-500 font-black text-lg">
+                              {formatPrice(p.price * (1 - (p.flashSaleDiscount || 25) / 100))}
+                            </span>
+                            <span className="text-xs text-gray-300 line-through font-medium">{formatPrice(p.price)}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                </div>
-              ))}
-              {products.filter(p => p.onFlashSale).length === 0 && (
+                    ))}
+                  </div>
+                ))}
+              </div>
+
+              {flashSaleProducts.length === 0 && (
                 <div className="col-span-full py-12 text-center text-gray-400 italic text-sm">
                   Hiện chưa có sản phẩm Flash Sale nào.
+                </div>
+              )}
+
+              {flashSaleTotalPages > 1 && (
+                <div className="flex justify-center space-x-3 mt-12">
+                  {Array.from({ length: flashSaleTotalPages }).map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setFlashSaleIndex(idx)}
+                      className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                        flashSaleIndex === idx 
+                          ? 'bg-brand-500 w-8' 
+                          : 'bg-brand-200 hover:bg-brand-300'
+                      }`}
+                      aria-label={`Go to page ${idx + 1}`}
+                    />
+                  ))}
                 </div>
               )}
             </div>
@@ -234,15 +262,15 @@ export default function Home() {
       </section>
 
       {/* Best Sellers Section */}
-      <section className="max-w-7xl mx-auto px-6 overflow-hidden mt-24 md:mt-32">
+      <section className="max-w-7xl mx-auto px-6 mt-24 md:mt-32">
         <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold uppercase tracking-widest text-gray-900 leading-tight">
+          <h2 className="text-4xl md:text-5xl font-bold uppercase tracking-widest text-gray-900 leading-relaxed pt-2">
             SẢN PHẨM <span className="text-brand-500">BÁN CHẠY</span>
           </h2>
-          <div className="w-24 h-1 bg-brand-500 mx-auto mt-6 rounded-full"></div>
+          <div className="w-24 h-1 bg-brand-500 mx-auto mt-2 rounded-full"></div>
         </div>
 
-        <div className="relative group">
+        <div className="relative group overflow-hidden">
           <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${bestSellersIndex * 100}%)` }}>
             {Array.from({ length: totalPages }).map((_, pageIdx) => (
               <div key={pageIdx} className="w-full flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-8">
@@ -274,7 +302,7 @@ export default function Home() {
                       )}
                     </div>
                     <div className="space-y-2">
-                      <h4 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] uppercase tracking-tight group-hover:text-brand-500 transition-colors uppercase">{p.name}</h4>
+                      <h4 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] uppercase tracking-tight uppercase">{p.name}</h4>
                       <p className="text-lg font-black text-gray-900">{formatPrice(p.price)}</p>
                     </div>
                   </motion.div>
@@ -303,13 +331,13 @@ export default function Home() {
       </section>
       
       {/* Latest Products Section */}
-      <section className="max-w-7xl mx-auto px-6 overflow-hidden mt-24 md:mt-32">
+      <section className="max-w-7xl mx-auto px-6 mt-24 md:mt-32">
         <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold uppercase tracking-widest text-gray-900 leading-tight">MỚI NHẤT</h2>
-          <div className="w-24 h-1 bg-brand-500 mx-auto mt-6 rounded-full"></div>
+          <h2 className="text-4xl md:text-5xl font-bold uppercase tracking-widest text-gray-900 leading-relaxed pt-2">MỚI NHẤT</h2>
+          <div className="w-24 h-1 bg-brand-500 mx-auto mt-2 rounded-full"></div>
         </div>
         
-        <div className="relative group">
+        <div className="relative group overflow-hidden">
           <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${latestProductsIndex * 100}%)` }}>
             {Array.from({ length: latestProductsTotalPages }).map((_, pageIdx) => (
               <div key={pageIdx} className="w-full flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-8">
@@ -341,7 +369,7 @@ export default function Home() {
                       </div>
                     </div>
                     <div className="space-y-2">
-                      <h3 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] uppercase tracking-tight group-hover:text-brand-500 transition-colors uppercase">{p.name}</h3>
+                      <h3 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] uppercase tracking-tight uppercase">{p.name}</h3>
                       <p className="text-lg font-black text-gray-900">{formatPrice(p.price)}</p>
                     </div>
                   </motion.div>
@@ -372,8 +400,8 @@ export default function Home() {
       {/* Category Grid Boxes */}
       <section className="max-w-7xl mx-auto px-6 mt-24 md:mt-32">
         <div className="text-center mb-12">
-          <h2 className="text-4xl md:text-5xl font-bold uppercase tracking-widest text-gray-900 leading-tight">CÁC DANH MỤC</h2>
-          <div className="w-24 h-1 bg-brand-500 mx-auto mt-6 rounded-full"></div>
+          <h2 className="text-4xl md:text-5xl font-bold uppercase tracking-widest text-gray-900 leading-relaxed pt-2">CÁC DANH MỤC</h2>
+          <div className="w-24 h-1 bg-brand-500 mx-auto mt-2 rounded-full"></div>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -409,7 +437,7 @@ export default function Home() {
       {/* Beauty Trends (Xu hướng làm đẹp) Section */}
       <section className="max-w-7xl mx-auto px-6 py-24 pb-0 text-center">
         <div className="flex flex-col items-center mb-16 px-4">
-          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-8 uppercase tracking-widest">XU HƯỚNG MỚI</h2>
+          <h2 className="text-4xl md:text-5xl font-bold text-gray-900 leading-relaxed pt-2 mb-6 uppercase tracking-widest">XU HƯỚNG MỚI</h2>
           <button 
             onClick={() => navigate('/blog')}
             className="group flex items-center space-x-2 text-xs font-bold uppercase tracking-widest text-gray-400 hover:text-brand-500 transition-all border-b-2 border-transparent hover:border-brand-500 pb-2"

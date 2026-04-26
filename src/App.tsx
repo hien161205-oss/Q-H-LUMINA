@@ -247,7 +247,7 @@ function Navbar({ user, cartCount, setIsCartOpen, setIsLoginModalOpen }: { user:
                    <div className="flex flex-col text-left">
                      <span className="text-[11px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-0.5">Tài khoản</span>
                      <span className="text-sm text-blue-600 font-black uppercase truncate max-w-[80px] md:max-w-[100px]">
-                       {user.displayName || user.name || user.email.split('@')[0]}
+                       {user.displayName || user.email.split('@')[0]}
                      </span>
                    </div>
                 </Link>
@@ -257,12 +257,9 @@ function Navbar({ user, cartCount, setIsCartOpen, setIsLoginModalOpen }: { user:
                 </button>
               </div>
             ) : (
-              <button 
-                onClick={() => setIsLoginModalOpen(true)} 
-                className="flex items-center space-x-2 text-gray-600 hover:text-blue-500 transition-all font-bold"
-              >
-                <User className="w-6 h-6 border-2 border-gray-100 rounded-full p-1" />
-                <span className="text-sm uppercase tracking-widest">Đăng nhập</span>
+              <button onClick={() => setIsLoginModalOpen(true)} className="flex items-center space-x-2 hover:text-brand-500 transition-all">
+                <User className="w-5 h-5" />
+                <span>Đăng nhập</span>
               </button>
             )}
           </div>
