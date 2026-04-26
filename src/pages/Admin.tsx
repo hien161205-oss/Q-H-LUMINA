@@ -295,7 +295,7 @@ function CategoryManagement() {
 
 function Overview() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ products: 0, orders: 0, users: 0, revenue: 0, blogs: 0, categories: 0, lowStock: 0 });
+  const [stats, setStats] = useState({ products: 0, orders: 0, users: 0, revenue: 0, blogs: 0, categories: 0 });
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<any[]>([]);
 
@@ -315,7 +315,6 @@ function Overview() {
         const totalRevenue = orders.reduce((acc: number, order: Order) => acc + (Number(order.total) || 0), 0);
         
         const uniqueCatsFromProducts = new Set(prodRes.snap.docs.map((d: any) => d.data().category).filter(Boolean)).size;
-        const lowStockCount = prodRes.snap.docs.filter((d: any) => (Number(d.data().stock) || 0) < 5).length;
       
         setStats({
           products: prodRes.snap.size,
@@ -324,7 +323,6 @@ function Overview() {
           revenue: totalRevenue,
           blogs: blogRes.snap.size,
           categories: catRes.snap.size || (uniqueCatsFromProducts > 0 ? uniqueCatsFromProducts : 4),
-          lowStock: lowStockCount
         });
 
         const last7Days = [...Array(7)].map((_: any, i: number) => {
@@ -366,7 +364,6 @@ function Overview() {
     { label: 'Đơn hàng', value: stats.orders, icon: ClipboardList, color: 'text-blue-500', bg: 'bg-blue-50', path: '/admin/orders' },
     { label: 'Danh mục', value: stats.categories || 0, icon: ChevronRight, color: 'text-orange-500', bg: 'bg-orange-50', path: '/admin/categories' },
     { label: 'Người dùng', value: stats.users, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50', path: '/admin/users' },
-    { label: 'Sắp hết hàng', value: stats.lowStock, icon: Package, color: 'text-red-500', bg: 'bg-red-50', path: '/admin/products' },
   ];
 
   return (
