@@ -29,7 +29,7 @@ export default function Home() {
     .filter(p => (p.salesCount || 0) >= 0) 
     .sort((a, b) => (b.salesCount || 0) - (a.salesCount || 0))
     .slice(0, 15);
-  const itemsPerPage = 5;
+  const itemsPerPage = 4;
   const totalPages = Math.ceil(bestSellers.length / itemsPerPage);
   
   // Latest Products carousel
@@ -160,7 +160,7 @@ export default function Home() {
 
       {/* Flash Sale Section */}
       <section className="max-w-7xl mx-auto px-6 mt-24 md:mt-32">
-        <div className="bg-brand-50 rounded-[3rem] overflow-hidden shadow-2xl shadow-brand-100/40 border border-brand-100/50">
+        <div className="bg-brand-50 rounded-[3rem] overflow-hidden shadow-[0_20px_50px_rgba(14,165,233,0.15)] border-2 border-brand-200">
           <div className="bg-gradient-to-r from-brand-600 via-blue-600 to-brand-600 py-6 px-10 flex items-center justify-center space-x-4">
             <Zap className="w-8 h-8 text-yellow-400 fill-current animate-pulse" />
             <h2 className="text-3xl md:text-4xl font-black italic tracking-[0.2em] text-white uppercase drop-shadow-lg">Flash Sale</h2>
@@ -188,8 +188,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-8">
-              {products.filter(p => p.onFlashSale).slice(0, 5).map((p) => (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+              {products.filter(p => p.onFlashSale).slice(0, 4).map((p) => (
                 <div 
                   key={p.id} 
                   className="bg-white rounded-[2rem] p-6 border border-brand-50 shadow-md hover:shadow-2xl hover:-translate-y-2 transition-all duration-500 group cursor-pointer relative"
@@ -245,7 +245,7 @@ export default function Home() {
         <div className="relative group">
           <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${bestSellersIndex * 100}%)` }}>
             {Array.from({ length: totalPages }).map((_, pageIdx) => (
-              <div key={pageIdx} className="w-full flex-shrink-0 grid grid-cols-2 md:grid-cols-5 gap-6">
+              <div key={pageIdx} className="w-full flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-8">
                 {bestSellers.slice(pageIdx * itemsPerPage, (pageIdx + 1) * itemsPerPage).map((p) => (
                   <motion.div 
                     key={p.id}
@@ -312,7 +312,7 @@ export default function Home() {
         <div className="relative group">
           <div className="flex transition-transform duration-700 ease-in-out" style={{ transform: `translateX(-${latestProductsIndex * 100}%)` }}>
             {Array.from({ length: latestProductsTotalPages }).map((_, pageIdx) => (
-              <div key={pageIdx} className="w-full flex-shrink-0 grid grid-cols-2 md:grid-cols-5 gap-6">
+              <div key={pageIdx} className="w-full flex-shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-8">
                 {latestProducts.slice(pageIdx * itemsPerPage, (pageIdx + 1) * itemsPerPage).map((p, idx) => (
                   <motion.div 
                     key={p.id}

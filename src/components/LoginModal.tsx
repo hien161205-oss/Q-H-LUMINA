@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
@@ -55,6 +56,19 @@ export default function LoginModal() {
       toast.error(error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      toast.error('Vui lòng nhập email của bạn trước!');
+      return;
+    }
+    try {
+      await sendPasswordResetEmail(auth, email);
+      toast.success('Email khôi phục mật khẩu đã được gửi!');
+    } catch (error: any) {
+      toast.error('Không thể gửi email: ' + error.message);
     }
   };
 
@@ -160,6 +174,17 @@ export default function LoginModal() {
                 {loading ? 'Đang xử lý...' : (isLogin ? 'Đăng nhập' : 'Tạo tài khoản')}
               </button>
             </form>
+
+            {isLogin && (
+              <div className="mt-4 text-center">
+                <button 
+                  onClick={handleForgotPassword}
+                  className="text-[10px] uppercase font-bold tracking-widest text-gray-400 hover:text-brand-500 transition-colors"
+                >
+                  Quên mật khẩu?
+                </button>
+              </div>
+            )}
 
             <div className="mt-10 text-center">
               <button 

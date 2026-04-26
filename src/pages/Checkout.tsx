@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, serverTimestamp, doc, writeBatch } from 'firebase/firestore';
+import { collection, serverTimestamp, doc, writeBatch, increment } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { formatPrice, cn } from '../lib/utils';
@@ -88,6 +88,13 @@ export default function Checkout() {
         customerInfo: formData,
         status: 'pending',
         createdAt: serverTimestamp()
+      });
+
+      // Cập nhật số lượng tồn kho cho từng sản phẩm
+      cart.forEach(item => {
+        const productRef = doc(db, 'products', item.id);
+        // Trừ đi số lượng đã mua
+        batch.update(productRef, { stock: increment(-item.quantity) });
       });
       
       await batch.commit();

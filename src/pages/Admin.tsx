@@ -1,19 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, Link, useNavigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Link, useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { 
   BarChart3, 
   Package, 
   ClipboardList, 
   Users, 
   Plus, 
-  Search, 
   Edit, 
   Trash2, 
-  Eye, 
   ChevronRight,
   Upload,
   CheckCircle2,
-  Clock,
   Truck,
   PackageCheck,
   Zap,
@@ -21,8 +18,6 @@ import {
   FileText
 } from 'lucide-react';
 import { 
-  BarChart, 
-  Bar, 
   XAxis, 
   YAxis, 
   CartesianGrid, 
@@ -43,8 +38,6 @@ import {
   serverTimestamp,
   where,
   Timestamp,
-  doc as firestoreDoc,
-  setDoc as firestoreSetDoc
 } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { db, storage, forceReconnect } from '../lib/firebase';
@@ -108,62 +101,83 @@ export default function Admin() {
   );
 }
 
+// Hàm fetch an toàn cho các collection, tránh lỗi Missing Permissions làm treo app
+const safeFetchColl = async (name: string) => {
+  try {
+    return await getDocs(collection(db, name));
+  } catch (e) {
+    console.warn(`Admin SafeFetch: Không có quyền truy cập ${name}`);
+    return { size: 0, docs: [] } as any;
+  }
+};
+
 function CategoryManagement() {
-  const [categories, setCategories] = useState<{ id: string, name: string, productCount: number }[]>([]);
-  const [isAdding, setIsAdding] = useState(false);
+  const [categories, setCategories] = useState<{ id: string, name: string, productCount: number, totalStock: number }[]>([]);
+  const [isAdding, setIsAdding] = useState(false); 
   const [newCatName, setNewCatName] = useState('');
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const fetchCategoryStats = async () => {
     setLoading(true);
     try {
-      const productsSnap = await getDocs(collection(db, 'products'));
-      const products = productsSnap.docs.map(doc => doc.data() as Product);
+      const [prodSnap, catSnap] = await Promise.all([
+        safeFetchColl('products'),
+        safeFetchColl('categories')
+      ]);
+
       
-      const catsSnap = await getDocs(collection(db, 'categories'));
-      let cats = catsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as any));
-      
-      // Default categories if missing
-      const defaultCats = ['Chăm sóc da', 'Trang điểm', 'Nước hoa', 'Chăm sóc cơ thể'];
-      
-      if (cats.length === 0) {
-        // Initialize if empty
-        const initialCats = defaultCats.map(name => ({ name }));
-        for (const cat of initialCats) {
-          const docRef = await addDoc(collection(db, 'categories'), cat);
-          cats.push({ id: docRef.id, ...cat });
-        }
+      const prod
+      ucts = prodSnap.docs.map(d => d.data() as Product);
+      let cats = catSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+
+      // Nếu hoàn toàn không có danh mục nào trong DB
+      if (cats.length === 0 && catSnap.size === 0) {
+        const defaults = ['Chăm sóc da', 'Trang điểm', 'Nước hoa', 'Chăm sóc cơ thể'];
+        cats = defaults.map((name, idx) => ({ id: `temp-${idx}`, name }));
       }
 
-      const stats = cats.map(cat => ({
-        ...cat,
-        productCount: products.filter(p => p.category === cat.name).length
-      }));
+      const categoryData = cats.map(cat => {
+        const cName = String(cat.name || 'Chưa đặt tên').trim().toLowerCase();
+        const catProds = products.filter(p => {
+          return String(p.category || '').trim().toLowerCase() === cName;
+        });
 
-      setCategories(stats);
+        return {
+          id: cat.id,
+          name: cat.name || 'Chưa đặt tên',
+          productCount: catProds.length,
+          totalStock: catProds.reduce((acc, p) => acc + (Number(p.stock) || 0), 0)
+        };
+      });
+
+      setCategories(categoryData);
     } catch (err) {
-      console.error(err);
-      toast.error('Lỗi khi tải danh mục');
+      console.error("Fetch stats error:", err);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchCategoryStats(); }, []);
+  useEffect(() => {
+    fetchCategoryStats();
+  }, []);
 
   const handleAddCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newCatName.trim()) return;
+    const name = newCatName.trim();
+    if (!name) return;
     
     setLoading(true);
     try {
-      await addDoc(collection(db, 'categories'), { name: newCatName.trim() });
+      await addDoc(collection(db, 'categories'), { name });
       toast.success('Đã thêm danh mục mới');
       setNewCatName('');
       setIsAdding(false);
-      fetchCategoryStats();
+      await fetchCategoryStats();
     } catch (err) {
-      toast.error('Lỗi khi thêm danh mục');
+      console.error("Error adding category:", err);
+      toast.error('Không thể thêm danh mục. Vui lòng kiểm tra quyền "create" trong Firebase Rules.');
     } finally {
       setLoading(false);
     }
@@ -203,44 +217,57 @@ function CategoryManagement() {
         </button>
       </div>
 
-      {isAdding && (
-        <motion.form 
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          onSubmit={handleAddCategory} 
-          className="bg-brand-50/50 p-6 rounded-3xl flex items-end gap-6 border border-brand-100"
-        >
-          <div className="flex-grow space-y-2">
-            <label className="text-[10px] uppercase font-bold tracking-widest text-brand-500 ml-4">Tên danh mục mới</label>
-            <input 
-              required value={newCatName}
-              onChange={(e) => setNewCatName(e.target.value)}
-              className="w-full bg-white rounded-2xl px-6 py-4 outline-none focus:ring-1 focus:ring-brand-200"
-              placeholder="Nhập tên danh mục..."
-            />
-          </div>
-          <div className="flex gap-2">
-            <button 
-              type="button" 
-              onClick={() => setIsAdding(false)}
-              className="px-6 py-4 rounded-2xl text-xs font-bold uppercase tracking-widest text-gray-400"
-            >
-              Hủy
-            </button>
-            <button 
-              type="submit" 
-              disabled={loading}
-              className="bg-brand-600 text-white px-8 py-4 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-brand-100 disabled:opacity-50"
-            >
-              Thêm
-            </button>
-          </div>
-        </motion.form>
-      )}
+      <AnimatePresence>
+        {isAdding && (
+          <motion.form 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            onSubmit={handleAddCategory} 
+            className="bg-brand-50/50 p-6 rounded-3xl flex items-end gap-6 border border-brand-100 overflow-hidden"
+          >
+            <div className="flex-grow space-y-2">
+              <label className="text-[10px] uppercase font-bold tracking-widest text-brand-500 ml-4">Tên danh mục mới</label>
+              <input 
+                required value={newCatName}
+                onChange={(e) => setNewCatName(e.target.value)}
+                className="w-full bg-white rounded-2xl px-6 py-4 outline-none focus:ring-1 focus:ring-brand-200"
+                placeholder="Nhập tên danh mục..."
+              />
+            </div>
+            <div className="flex gap-2">
+              <button 
+                type="button" 
+                onClick={() => setIsAdding(false)}
+                className="px-6 py-4 rounded-2xl text-xs font-bold uppercase tracking-widest text-gray-400"
+              >
+                Hủy
+              </button>
+              <button 
+                type="submit" 
+                disabled={loading}
+                className="bg-brand-600 text-white px-8 py-4 rounded-2xl text-xs font-bold uppercase tracking-widest shadow-lg shadow-brand-100 disabled:opacity-50"
+              >
+                Thêm
+              </button>
+            </div>
+          </motion.form>
+        )}
+      </AnimatePresence>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {categories.map((cat) => (
-          <div key={cat.id} className="p-6 rounded-[2rem] border border-brand-50 bg-white shadow-sm flex flex-col space-y-4 hover:shadow-md transition-shadow">
+        {loading && categories.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-gray-400 italic">Đang đồng bộ dữ liệu danh mục...</div>
+        ) : categories.length === 0 ? (
+          <div className="col-span-full py-12 text-center text-gray-400 italic bg-brand-50/20 rounded-3xl border border-dashed border-brand-100">
+            Chưa có danh mục nào hoặc lỗi phân quyền Firebase.
+          </div>
+        ) : categories.map((cat) => ( // Đổi tên biến để tránh nhầm lẫn
+          <div 
+            key={cat.id} 
+            onClick={() => navigate(`/admin/products?category=${encodeURIComponent(cat.name)}`)} // Thêm điều hướng
+            className="p-6 rounded-[2rem] border border-brand-50 bg-white shadow-sm flex flex-col space-y-4 hover:shadow-md transition-shadow cursor-pointer" // Thêm cursor-pointer
+          >
             <div className="flex justify-between items-start">
               <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center text-brand-500">
                 <ChevronRight className="w-5 h-5" />
@@ -255,13 +282,13 @@ function CategoryManagement() {
             <div>
               <h3 className="text-lg font-bold text-gray-800">{cat.name}</h3>
               <p className="text-xs text-gray-400 uppercase tracking-widest mt-1">
-                {cat.productCount} sản phẩm
+                {cat.productCount} mẫu mã • {cat.totalStock} số lượng
               </p>
             </div>
             <div className="pt-2">
               <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
                 <div 
-                  className="bg-brand-500 h-full rounded-full transition-all duration-1000"
+                  className="bg-brand-500 h-full rounded-full transition-all duration-700"
                   style={{ width: `${Math.min(100, (cat.productCount / 20) * 100)}%` }}
                 />
               </div>
@@ -275,55 +302,70 @@ function CategoryManagement() {
 
 function Overview() {
   const navigate = useNavigate();
-  const [stats, setStats] = useState({ products: 0, orders: 0, users: 0, revenue: 0, blogs: 0 });
+  // Đảm bảo toast.error cho lỗi phân quyền tổng thể chỉ xuất hiện một lần
+  const [stats, setStats] = useState({ products: 0, orders: 0, users: 0, revenue: 0, blogs: 0, categories: 0 });
+  const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<any[]>([]);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      const prods = await getDocs(collection(db, 'products'));
-      const ordsSnapshot = await getDocs(collection(db, 'orders'));
-      const activeUsers = await getDocs(collection(db, 'users'));
-      const activeBlogs = await getDocs(collection(db, 'blogs'));
-      const activeCats = await getDocs(collection(db, 'categories'));
-      
-      const orders = ordsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
-      const revenue = orders.reduce((acc, order) => acc + (order.total || 0), 0);
-      
-      setStats({
-        products: prods.size,
-        orders: orders.length,
-        users: activeUsers.size,
-        revenue,
-        blogs: activeBlogs.size,
-        categories: activeCats.size || 4
-      });
+    const fetchStats = async () => { 
+      setLoading(true);
+      try {
+        const [prodSnap, orderSnap, userSnap, blogSnap, catSnap] = await Promise.all([
+          safeFetchColl('products'),
+          safeFetchColl('orders'),
+          safeFetchColl('users'),
+          safeFetchColl('blogs'),
+          safeFetchColl('categories')
+        ]);
 
-      // Prepare 7-day chart data
-      const last7Days = [...Array(7)].map((_, i) => {
-        const d = new Date();
-        d.setDate(d.getDate() - (6 - i));
-        d.setHours(0, 0, 0, 0);
-        return {
-          date: d,
-          label: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
-          revenue: 0
-        };
-      });
+        const orders = (orderSnap as any).docs.map((d: any) => d.data() as Order);
+        const totalRevenue = orders.reduce((acc: number, o: any) => acc + (Number(o.total) || 0), 0);
+        
+        setStats({
+          products: prodSnap.size,
+          orders: orderSnap.size,
+          users: userSnap.size,
+          revenue: totalRevenue,
+          blogs: blogSnap.size,
+          categories: catSnap.size
+        });
 
-      orders.forEach(order => {
-        if (order.createdAt) {
-          const orderDate = order.createdAt instanceof Timestamp ? order.createdAt.toDate() : new Date(order.createdAt);
-          const dayIndex = last7Days.findIndex(d => 
-            d.date.getDate() === orderDate.getDate() && 
-            d.date.getMonth() === orderDate.getMonth()
-          );
-          if (dayIndex !== -1) {
-            last7Days[dayIndex].revenue += order.total;
-          }
+        if (prodSnap.size === 0 && orderSnap.size === 0 && userSnap.size === 0 && blogSnap.size === 0 && catSnap.size === 0) {
+          toast.error("Lỗi phân quyền Firebase: Vui lòng kiểm tra Security Rules.", { id: 'perm-error-overview', duration: 5000 });
         }
-      });
 
-      setChartData(last7Days);
+        const last7Days = [...Array(7)].map((_, i) => {
+          const d = new Date();
+          d.setDate(d.getDate() - (6 - i));
+          d.setHours(0, 0, 0, 0);
+          return {
+            date: d,
+            label: d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' }),
+            revenue: 0
+          };
+        });
+
+        orders.forEach((order: any) => {
+          if (order.createdAt) {
+            const orderDate = order.createdAt instanceof Timestamp ? order.createdAt.toDate() : new Date(order.createdAt as any);
+            const dayIndex = last7Days.findIndex(d => 
+              d.date.getDate() === orderDate.getDate() && 
+              d.date.getMonth() === orderDate.getMonth()
+            );
+            if (dayIndex !== -1) {
+              last7Days[dayIndex].revenue += (Number(order.total) || 0);
+            }
+          }
+        });
+
+        setChartData(last7Days);
+      } catch (err) {
+        console.error("Overview Fetch Error:", err);
+        toast.error("Không thể tải thống kê hệ thống");
+      } finally {
+        setLoading(false);
+      }
     };
     fetchStats();
   }, []);
@@ -331,11 +373,16 @@ function Overview() {
   const statCards = [
     { label: 'Doanh thu', value: formatPrice(stats.revenue), icon: TrendingUp, color: 'text-brand-500', bg: 'bg-brand-50', path: '/admin/orders' },
     { label: 'Đơn hàng', value: stats.orders, icon: ClipboardList, color: 'text-blue-500', bg: 'bg-blue-50', path: '/admin/orders' },
-    { label: 'Danh mục', value: (stats as any).categories || 0, icon: ChevronRight, color: 'text-orange-500', bg: 'bg-orange-50', path: '/admin/categories' },
+    { label: 'Danh mục', value: stats.categories || 0, icon: ChevronRight, color: 'text-orange-500', bg: 'bg-orange-50', path: '/admin/categories' },
     { label: 'Người dùng', value: stats.users, icon: Users, color: 'text-purple-500', bg: 'bg-purple-50', path: '/admin/users' },
   ];
 
   return (
+    loading ? (
+      <div className="h-96 flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-brand-100 border-t-brand-500 rounded-full animate-spin"></div>
+      </div>
+    ) : (
     <div className="space-y-12">
       <header className="flex justify-between items-start">
         <div>
@@ -378,7 +425,7 @@ function Overview() {
              <span>Doanh số (VND)</span>
            </div>
         </div>
-        <div className="h-72 w-full">
+        <div className="h-[300px] w-full min-h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData}>
               <defs>
@@ -418,15 +465,18 @@ function Overview() {
         </div>
       </div>
     </div>
+    )
   );
 }
 
 function ProductManagement() {
+  const [searchParams, setSearchParams] = useSearchParams(); // Hook để đọc query params
   const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<any[]>([]);
   const [isEditing, setIsEditing] = useState(false);
   const [currentProduct, setCurrentProduct] = useState<Partial<Product>>({
     name: '', price: 0, imageUrl: '', category: 'Chăm sóc da', stock: 10, onFlashSale: false, flashSaleDiscount: 0,
+    // Thêm các trường mới vào trạng thái khởi tạo
     brand: '', weight: '', texture: '', origin: '', features: [], gallery: []
   });
   const [galleryText, setGalleryText] = useState('');
@@ -435,16 +485,29 @@ function ProductManagement() {
   const [loading, setLoading] = useState(false);
 
   const fetchCategories = async () => {
-    const snap = await getDocs(collection(db, 'categories'));
-    setCategories(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    const snap = await safeFetchColl('categories');
+    setCategories(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
   };
 
   const fetchProducts = async () => {
-    const q = query(collection(db, 'products'), orderBy('name'));
-    const snap = await getDocs(q);
-    setProducts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
-  };
+    setLoading(true);
+    try {
+      let productsQuery = query(collection(db, 'products'), orderBy('name'));
+      const categoryFilter = searchParams.get('category'); // Lấy category từ URL
 
+      if (categoryFilter) {
+        productsQuery = query(productsQuery, where('category', '==', categoryFilter));
+      }
+
+      const snap = await getDocs(productsQuery);
+      setProducts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      toast.error("Không thể tải sản phẩm. Vui lòng kiểm tra quyền Firebase.");
+    } finally {
+      setLoading(false);
+    }
+  };
   useEffect(() => { 
     fetchProducts();
     fetchCategories();
@@ -519,11 +582,24 @@ function ProductManagement() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8"> 
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-2xl font-serif">Sản phẩm</h2>
-          <p className="text-xs text-gray-500 mt-1">Tinh chỉnh bộ sưu tập của bạn.</p>
+          <h2 className="text-2xl font-serif">
+            Sản phẩm {searchParams.get('category') && `trong danh mục "${searchParams.get('category')}"`}
+          </h2>
+          <p className="text-xs text-gray-500 mt-1">
+            Tinh chỉnh bộ sưu tập của bạn.
+            {searchParams.get('category') && (
+              <button 
+                onClick={() => setSearchParams({})} // Xóa bộ lọc category
+                className="ml-2 text-brand-500 hover:underline"
+              >
+                (Xóa bộ lọc)
+              </button>
+            )}
+          </p>
+
         </div>
         <button 
           onClick={() => { 
@@ -585,7 +661,7 @@ function ProductManagement() {
               </select>
             </div>
             <div className="space-y-2">
-              <label className="text-xs uppercase font-bold tracking-widest text-brand-500 ml-4">Số lượng tồn</label>
+              <label className="text-xs uppercase font-bold tracking-widest text-brand-500 ml-4">Số lượng</label>
               <input 
                 type="text"
                 value={currentProduct.stock === 0 ? '' : currentProduct.stock}
@@ -731,7 +807,7 @@ function ProductManagement() {
                 <th className="px-6 py-4 font-bold uppercase tracking-widest text-xs text-gray-500">Tên</th>
                 <th className="px-6 py-4 font-bold uppercase tracking-widest text-xs text-gray-500">Danh mục</th>
                 <th className="px-6 py-4 font-bold uppercase tracking-widest text-xs text-gray-500">Giá</th>
-                <th className="px-6 py-4 font-bold uppercase tracking-widest text-xs text-gray-500">Tồn kho</th>
+                <th className="px-6 py-4 font-bold uppercase tracking-widest text-xs text-gray-500">Số lượng</th>
                 <th className="px-6 py-4 font-bold uppercase tracking-widest text-xs text-gray-500 text-right">Hành động</th>
               </tr>
             </thead>
