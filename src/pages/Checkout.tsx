@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { formatPrice, cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
 import { motion } from 'motion/react';
-import { CreditCard, Truck, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Truck, ShieldCheck, CheckCircle2, ChevronDown } from 'lucide-react';
 
 export default function Checkout() {
   const { cart, totalAmount, clearCart, setIsLoginModalOpen } = useCart();
@@ -169,33 +169,36 @@ export default function Checkout() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
           <div className="lg:col-span-7 space-y-12">
             <h1 className="text-5xl font-serif text-gray-900 leading-tight">Thanh toán</h1>
-            <form onSubmit={handleSubmit} className="space-y-10">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-blue-500 ml-4 tracking-widest">Người nhận</label>
-                  <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-white rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-blue-100 border border-gray-100 shadow-sm" placeholder="Họ và tên..." />
+            <form onSubmit={handleSubmit} className="bg-white rounded-[3rem] p-10 shadow-2xl shadow-blue-50/50 border border-gray-50 space-y-10">
+              <div className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-blue-500 ml-4 tracking-widest">Người nhận</label>
+                    <input type="text" required value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} className="w-full bg-slate-50 rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-blue-100 border-none shadow-sm" placeholder="Họ và tên..." />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase text-blue-500 ml-4 tracking-widest">Số điện thoại</label>
+                    <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-slate-50 rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-blue-100 border-none shadow-sm" placeholder="Số điện thoại..." />
+                  </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase text-blue-500 ml-4 tracking-widest">Số điện thoại</label>
-                  <input type="tel" required value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} className="w-full bg-white rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-blue-100 border border-gray-100 shadow-sm" placeholder="Số điện thoại..." />
+                  <label className="text-[10px] font-black uppercase text-blue-500 ml-4 tracking-widest">Địa chỉ giao hàng</label>
+                  <textarea required value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} rows={3} className="w-full bg-slate-50 rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-blue-100 border-none shadow-sm resize-none" placeholder="Địa chỉ chi tiết..." />
                 </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase text-blue-500 ml-4 tracking-widest">Địa chỉ giao hàng</label>
-                <textarea required value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})} rows={3} className="w-full bg-white rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-blue-100 border border-gray-100 shadow-sm resize-none" placeholder="Địa chỉ chi tiết..." />
-              </div>
-              
-              <div className="space-y-6">
-                <label className="text-[10px] font-black uppercase text-blue-500 ml-4 tracking-widest">Hình thức thanh toán</label>
-                <div className="grid grid-cols-1 gap-4">
-                  <button type="button" onClick={() => setPaymentMethod('cod')} className={cn("p-8 rounded-[2.5rem] border-2 transition-all flex items-center gap-6 text-left", paymentMethod === 'cod' ? "border-blue-500 bg-blue-50" : "bg-white border-transparent")}>
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", paymentMethod === 'cod' ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600")}><Truck /></div>
-                    <div><h4 className="font-black uppercase tracking-widest text-sm">Thanh toán (COD)</h4><p className="text-xs text-gray-400">Nhận hàng rồi mới trả tiền.</p></div>
-                  </button>
-                  <button type="button" onClick={() => setPaymentMethod('bank_transfer')} className={cn("p-8 rounded-[2.5rem] border-2 transition-all flex items-center gap-6 text-left", paymentMethod === 'bank_transfer' ? "border-blue-500 bg-blue-50" : "bg-white border-transparent")}>
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center", paymentMethod === 'bank_transfer' ? "bg-blue-600 text-white" : "bg-blue-50 text-blue-600")}><CreditCard /></div>
-                    <div><h4 className="font-black uppercase tracking-widest text-sm">Chuyển khoản (VietQR)</h4><p className="text-xs text-gray-400">Chuyển khoản nhanh sau khi đặt hàng.</p></div>
-                  </button>
+                
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase text-blue-500 ml-4 tracking-widest">Hình thức thanh toán</label>
+                  <div className="relative">
+                    <select 
+                      value={paymentMethod}
+                      onChange={(e) => setPaymentMethod(e.target.value as 'cod' | 'bank_transfer')}
+                      className="w-full appearance-none bg-slate-50 rounded-3xl px-8 py-5 outline-none focus:ring-4 focus:ring-blue-100 text-sm font-bold text-gray-700 cursor-pointer shadow-sm border-none"
+                    >
+                      <option value="cod">Thanh toán khi nhận hàng (COD)</option>
+                      <option value="bank_transfer">Chuyển khoản ngân hàng (VietQR)</option>
+                    </select>
+                    <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 

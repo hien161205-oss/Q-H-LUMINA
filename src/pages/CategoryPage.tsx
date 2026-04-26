@@ -35,7 +35,7 @@ function CategoryView({ title, products, loading }: CategoryViewProps) {
   ];
 
   // Tự động lấy danh sách thương hiệu từ danh sách sản phẩm hiện tại
-  const allBrands = Array.from(new Set(products.map(p => p.brand || 'Khác'))).sort();
+  const allBrands = Array.from(new Set(products.map(p => p.brand).filter(Boolean))).sort() as string[];
 
   // Logic xử lý sản phẩm (Lọc trước, sau đó Sắp xếp)
   const processedProducts = products
@@ -56,19 +56,11 @@ function CategoryView({ title, products, loading }: CategoryViewProps) {
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
-      <button 
-        onClick={() => navigate('/')}
-        className="flex items-center space-x-2 text-gray-400 hover:text-brand-500 transition-colors mb-8 group"
-      >
-        <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
-        <span className="text-xs uppercase font-bold tracking-widest">Trang chủ</span>
-      </button>
-
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-12">
         {/* BÊN TRÁI: SIDEBAR BỘ LỌC */}
         <aside className="space-y-10">
           <div className="space-y-6">
-            <h3 className="text-sm font-bold tracking-widest text-gray-900 border-b border-gray-100 pb-4 uppercase">Thương hiệu</h3>
+            <h3 className="text-sm font-bold tracking-widest text-brand-600 border-b border-brand-100 pb-4 uppercase">Thương hiệu</h3>
             <div className="space-y-4">
               {allBrands.map(brand => (
                 <label key={brand} className="flex items-center space-x-3 cursor-pointer group">
@@ -87,7 +79,7 @@ function CategoryView({ title, products, loading }: CategoryViewProps) {
           </div>
 
           <div className="space-y-6">
-            <h3 className="text-sm font-bold tracking-widest text-gray-900 border-b border-gray-100 pb-4 uppercase">Mức giá</h3>
+            <h3 className="text-sm font-bold tracking-widest text-brand-600 border-b border-brand-100 pb-4 uppercase">Mức giá</h3>
             <div className="space-y-4">
                {priceOptions.map((option, i) => (
                  <label key={i} className="flex items-center space-x-3 cursor-pointer group">
@@ -112,19 +104,19 @@ function CategoryView({ title, products, loading }: CategoryViewProps) {
 
         {/* BÊN PHẢI: NỘI DUNG SẢN PHẨM */}
         <div className="lg:col-span-3 space-y-8">
-          <header className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-white p-6 rounded-[2rem] border border-gray-50 shadow-sm">
+          <header className="flex flex-col sm:flex-row justify-between items-center gap-4 bg-brand-50/40 p-6 rounded-[2rem] border-2 border-brand-200 shadow-sm">
             <h1 className="text-3xl font-bold text-gray-900 uppercase tracking-tight">{title}</h1>
             <div className="relative">
               <select 
                 value={sortPrice}
                 onChange={(e) => setSortPrice(e.target.value as any)}
-                className="appearance-none bg-white border border-blue-200 rounded-xl px-6 py-3 pr-10 text-xs font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-100 transition-all cursor-pointer shadow-sm"
+                className="appearance-none bg-white border-2 border-brand-300 rounded-2xl px-6 py-3 pr-10 text-xs font-bold uppercase tracking-widest text-gray-600 focus:outline-none focus:ring-2 focus:ring-brand-500 transition-all cursor-pointer shadow-sm"
               >
                 <option value="">Sắp xếp: Mặc định</option>
                 <option value="asc">Giá: Thấp đến Cao</option>
                 <option value="desc">Giá: Cao đến Thấp</option>
               </select>
-              <ChevronRightIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-400 rotate-90 pointer-events-none" />
+              <ChevronRightIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-400 rotate-90 pointer-events-none" />
             </div>
           </header>
 

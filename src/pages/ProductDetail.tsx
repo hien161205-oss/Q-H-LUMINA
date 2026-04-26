@@ -184,7 +184,7 @@ export default function ProductDetail() {
                   onClick={handleBuyNow}
                   className="flex-grow bg-blue-500 text-white py-4 px-8 rounded-xl font-bold uppercase tracking-widest hover:bg-blue-600 transition-all shadow-lg shadow-blue-100 active:scale-95"
                 >
-                  Mua Online
+                  Mua Ngay
                 </button>
                 <button 
                   onClick={() => {
