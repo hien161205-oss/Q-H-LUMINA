@@ -15,7 +15,8 @@ import {
   PackageCheck,
   Zap,
   TrendingUp,
-  FileText
+  FileText,
+  Search
 } from 'lucide-react';
 import { 
   XAxis, 

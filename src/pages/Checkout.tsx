@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, serverTimestamp, doc, writeBatch, increment } from 'firebase/firestore';
+import { collection, serverTimestamp, doc, writeBatch, increment, getDoc } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { formatPrice, cn } from '../lib/utils';
