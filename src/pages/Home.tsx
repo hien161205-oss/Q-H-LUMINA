@@ -145,7 +145,48 @@ export default function Home() {
   }, []);
 
   return (
-    <div className="space-y-12 pb-20">
+    <div className="space-y-12 pb-20 min-h-screen">
+      {/* Phần hiển thị kết quả tìm kiếm */}
+      {searchTerm && (
+        <section className="max-w-7xl mx-auto px-6 pt-12">
+          <div className="flex items-center justify-between mb-12">
+            <div>
+              <h2 className="text-3xl font-serif text-gray-900">Kết quả tìm kiếm cho: <span className="text-brand-500">"{searchTerm}"</span></h2>
+              <p className="text-sm text-gray-400 mt-2 font-medium">Tìm thấy {filteredProducts.length} sản phẩm phù hợp</p>
+            </div>
+            <button onClick={() => navigate('/')} className="text-xs font-bold uppercase tracking-widest text-brand-500 hover:underline">Xóa tìm kiếm</button>
+          </div>
+
+          {filteredProducts.length === 0 ? (
+            <div className="py-32 text-center bg-white rounded-[3rem] border border-dashed border-brand-200">
+              <Search className="w-16 h-16 text-brand-100 mx-auto mb-6" />
+              <p className="text-gray-400 italic text-lg font-serif">Rất tiếc, chúng tôi không tìm thấy sản phẩm nào khớp với từ khóa của bạn.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-8">
+              {filteredProducts.map((p) => (
+                <motion.div 
+                  key={p.id}
+                  layout
+                  className="flex flex-col group cursor-pointer bg-white p-6 rounded-[2rem] border border-brand-100 shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-500"
+                  onClick={() => navigate(`/product/${p.id}`)}
+                >
+                  <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-brand-50 mb-6 group-hover:shadow-lg transition-all duration-500">
+                    <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-bold text-gray-800 line-clamp-2 min-h-[2.5rem] uppercase tracking-tight">{p.name}</h4>
+                    <p className="text-lg font-black text-gray-900">{formatPrice(p.price)}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {!searchTerm && (
+        <>
       {/* Hero Section */}
       <section className="max-w-7xl mx-auto mt-6 px-6">
         <motion.div
@@ -515,6 +556,8 @@ export default function Home() {
           )}
         </div>
       </section>
+        </>
+      )}
     </div>
   );
 }
