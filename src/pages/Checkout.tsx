@@ -67,6 +67,20 @@ export default function Checkout() {
     }
     setLoading(true);
     try {
+      // Kiểm tra tồn kho trước khi thanh toán
+      for (const item of cart) {
+        const productRef = doc(db, 'products', item.id);
+        const productSnap = await getDoc(productRef);
+        if (productSnap.exists()) {
+          const currentStock = productSnap.data().stock || 0;
+          if (currentStock < item.quantity) {
+            toast.error(`Sản phẩm "${item.name}" chỉ còn ${currentStock} món trong kho.`);
+            setLoading(false);
+            return;
+          }
+        }
+      }
+
       const batch = writeBatch(db);
       const items = cart.map(i => ({ 
         id: i.id, 
