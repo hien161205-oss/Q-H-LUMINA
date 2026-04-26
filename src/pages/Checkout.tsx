@@ -104,12 +104,13 @@ export default function Checkout() {
         createdAt: serverTimestamp()
       });
 
-      // Cập nhật số lượng tồn kho cho từng sản phẩm
-      cart.forEach(item => {
-        const productRef = doc(db, 'products', item.id);
-        // Trừ đi số lượng đã mua
-        batch.update(productRef, { stock: increment(-item.quantity) });
-      });
+      // LƯU Ý: Việc trừ tồn kho nên thực hiện qua Cloud Functions để bảo mật.
+      // Nếu Rules Firebase của bạn chặn User sửa collection 'products', 
+      // đoạn code dưới đây sẽ gây lỗi "Missing Permissions".
+      // cart.forEach(item => {
+      //   const productRef = doc(db, 'products', item.id);
+      //   batch.update(productRef, { stock: increment(-item.quantity) });
+      // });
       
       await batch.commit();
       setOrderInfo({ total: currentFinalTotal, memo: currentMemo });

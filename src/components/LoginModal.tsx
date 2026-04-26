@@ -44,7 +44,7 @@ export default function LoginModal() {
         await setDoc(doc(db, 'users', user.uid), {
           uid: user.uid,
           email: user.email,
-          name: name,
+          displayName: name,
           role: role,
           createdAt: serverTimestamp()
         });
