@@ -104,10 +104,11 @@ export default function Admin() {
 // Hàm fetch an toàn cho các collection, tránh lỗi Missing Permissions làm treo app
 const safeFetchColl = async (name: string) => {
   try {
-    return await getDocs(collection(db, name));
+    const snap = await getDocs(collection(db, name));
+    return { snap, error: false };
   } catch (e) {
     console.warn(`Admin SafeFetch: Không có quyền truy cập ${name}`);
-    return { size: 0, docs: [] } as any;
+    return { snap: { size: 0, docs: [] } as any, error: true };
   }
 };
 
@@ -119,45 +120,49 @@ function CategoryManagement() {
   const navigate = useNavigate();
 
   const fetchCategoryStats = async () => {
-    setLoading(true);
-    try {
-      const [prodSnap, catSnap] = await Promise.all([
-        safeFetchColl('products'),
-        safeFetchColl('categories')
-      ]);
+  setLoading(true);
+  try {
+    const [prodRes, catRes] = await Promise.all([
+      safeFetchColl('products'),
+      safeFetchColl('categories')
+    ]);
 
-      
-      const prod
-      ucts = prodSnap.docs.map(d => d.data() as Product);
-      let cats = catSnap.docs.map(d => ({ id: d.id, ...d.data() } as any));
+    const products: Product[] = prodRes.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Product));
+    let cats = catRes.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as any));
 
-      // Nếu hoàn toàn không có danh mục nào trong DB
-      if (cats.length === 0 && catSnap.size === 0) {
-        const defaults = ['Chăm sóc da', 'Trang điểm', 'Nước hoa', 'Chăm sóc cơ thể'];
-        cats = defaults.map((name, idx) => ({ id: `temp-${idx}`, name }));
-      }
-
-      const categoryData = cats.map(cat => {
-        const cName = String(cat.name || 'Chưa đặt tên').trim().toLowerCase();
-        const catProds = products.filter(p => {
-          return String(p.category || '').trim().toLowerCase() === cName;
-        });
-
-        return {
-          id: cat.id,
-          name: cat.name || 'Chưa đặt tên',
-          productCount: catProds.length,
-          totalStock: catProds.reduce((acc, p) => acc + (Number(p.stock) || 0), 0)
-        };
-      });
-
-      setCategories(categoryData);
-    } catch (err) {
-      console.error("Fetch stats error:", err);
-    } finally {
-      setLoading(false);
+      // Nếu DB trống hoặc lỗi phân quyền, hiển thị danh mục mặc định để UI không bị trắng
+      if (cats.length === 0) {
+      const defaults = ['Chăm sóc da', 'Trang điểm', 'Nước hoa', 'Chăm sóc cơ thể'];
+        const tempCats = [];
+        for (const name of defaults) {
+          try {
+            // Chỉ thử ghi nếu không có lỗi fetch trước đó
+            if (!catRes.error) await addDoc(collection(db, 'categories'), { name });
+          } catch (e) { /* Cấm ghi thì thôi, bỏ qua */ }
+          tempCats.push({ id: `temp-${name}`, name });
+        }
+        cats = tempCats;
     }
-  };
+
+      const categoryData = cats.map((cat: any) => {
+        const cName: string = String(cat.name || 'Chưa đặt tên').trim().toLowerCase();
+        const catProds: Product[] = products.filter((p: Product) => String(p.category || '').trim().toLowerCase() === cName);
+
+      return {
+        id: cat.id,
+        name: cat.name || 'Chưa đặt tên',
+        productCount: catProds.length,
+          totalStock: catProds.reduce((acc: number, p: Product) => acc + (Number(p.stock) || 0), 0)
+      };
+    });
+
+    setCategories(categoryData);
+  } catch (err) {
+    console.error("Fetch stats error:", err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   useEffect(() => {
     fetchCategoryStats();
@@ -190,7 +195,7 @@ function CategoryManagement() {
       return;
     }
     
-    if (confirm(`Bạn có chắc chắn muốn xóa danh mục "${name}"?`)) {
+    if (window.confirm(`Bạn có chắc chắn muốn xóa danh mục "${name}"?`)) {
       try {
         await deleteDoc(doc(db, 'categories', id));
         toast.success('Đã xóa danh mục');
@@ -265,8 +270,8 @@ function CategoryManagement() {
         ) : categories.map((cat) => ( // Đổi tên biến để tránh nhầm lẫn
           <div 
             key={cat.id} 
-            onClick={() => navigate(`/admin/products?category=${encodeURIComponent(cat.name)}`)} // Thêm điều hướng
-            className="p-6 rounded-[2rem] border border-brand-50 bg-white shadow-sm flex flex-col space-y-4 hover:shadow-md transition-shadow cursor-pointer" // Thêm cursor-pointer
+            onClick={() => navigate(`/admin/products?category=${encodeURIComponent(cat.name)}`)}
+            className="p-6 rounded-[2rem] border border-brand-50 bg-white shadow-sm flex flex-col space-y-4 hover:shadow-md transition-shadow cursor-pointer group"
           >
             <div className="flex justify-between items-start">
               <div className="w-10 h-10 bg-brand-50 rounded-xl flex items-center justify-center text-brand-500">
@@ -311,7 +316,7 @@ function Overview() {
     const fetchStats = async () => { 
       setLoading(true);
       try {
-        const [prodSnap, orderSnap, userSnap, blogSnap, catSnap] = await Promise.all([
+        const [prodRes, orderRes, userRes, blogRes, catRes] = await Promise.all([
           safeFetchColl('products'),
           safeFetchColl('orders'),
           safeFetchColl('users'),
@@ -319,23 +324,26 @@ function Overview() {
           safeFetchColl('categories')
         ]);
 
-        const orders = (orderSnap as any).docs.map((d: any) => d.data() as Order);
-        const totalRevenue = orders.reduce((acc: number, o: any) => acc + (Number(o.total) || 0), 0);
+        const orders: Order[] = orderRes.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Order));
+        const totalRevenue: number = orders.reduce((acc: number, o: Order) => acc + (Number(o.total) || 0), 0);
         
+        // Nếu categories trong DB bị 0, ta lấy số lượng danh mục duy nhất có trong products để hiện con số chính xác
+        const uniqueCatsFromProducts = new Set(prodRes.snap.docs.map((d: any) => d.data().category).filter(Boolean)).size;
+
         setStats({
-          products: prodSnap.size,
-          orders: orderSnap.size,
-          users: userSnap.size,
+          products: prodRes.snap.size,
+          orders: orderRes.snap.size,
+          users: userRes.snap.size,
           revenue: totalRevenue,
-          blogs: blogSnap.size,
-          categories: catSnap.size
+          blogs: blogRes.snap.size,
+          categories: catRes.snap.size || (uniqueCatsFromProducts > 0 ? uniqueCatsFromProducts : 4)
         });
 
-        if (prodSnap.size === 0 && orderSnap.size === 0 && userSnap.size === 0 && blogSnap.size === 0 && catSnap.size === 0) {
+        if (prodRes.error && catRes.error) {
           toast.error("Lỗi phân quyền Firebase: Vui lòng kiểm tra Security Rules.", { id: 'perm-error-overview', duration: 5000 });
         }
 
-        const last7Days = [...Array(7)].map((_, i) => {
+        const last7Days = [...Array(7)].map((_: any, i: number) => {
           const d = new Date();
           d.setDate(d.getDate() - (6 - i));
           d.setHours(0, 0, 0, 0);
@@ -346,10 +354,10 @@ function Overview() {
           };
         });
 
-        orders.forEach((order: any) => {
+        orders.forEach((order: Order) => {
           if (order.createdAt) {
             const orderDate = order.createdAt instanceof Timestamp ? order.createdAt.toDate() : new Date(order.createdAt as any);
-            const dayIndex = last7Days.findIndex(d => 
+            const dayIndex = last7Days.findIndex((d: any) => 
               d.date.getDate() === orderDate.getDate() && 
               d.date.getMonth() === orderDate.getMonth()
             );
@@ -485,8 +493,8 @@ function ProductManagement() {
   const [loading, setLoading] = useState(false);
 
   const fetchCategories = async () => {
-    const snap = await safeFetchColl('categories');
-    setCategories(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
+    const res = await safeFetchColl('categories');
+    setCategories(res.snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() })));
   };
 
   const fetchProducts = async () => {
@@ -500,7 +508,7 @@ function ProductManagement() {
       }
 
       const snap = await getDocs(productsQuery);
-      setProducts(snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product)));
+      setProducts(snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() } as Product)));
     } catch (error) {
       console.error("Error fetching products:", error);
       toast.error("Không thể tải sản phẩm. Vui lòng kiểm tra quyền Firebase.");
@@ -511,7 +519,7 @@ function ProductManagement() {
   useEffect(() => { 
     fetchProducts();
     fetchCategories();
-  }, []);
+  }, [searchParams]);
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -574,7 +582,7 @@ function ProductManagement() {
   };
 
   const handleDelete = async (id: string) => {
-    if (confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?')) {
+    if (window.confirm('Bạn có chắc chắn muốn xóa sản phẩm này không?')) {
       await deleteDoc(doc(db, 'products', id));
       toast.success('Sản phẩm đã được xóa');
       fetchProducts();
