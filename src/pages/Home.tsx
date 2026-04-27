@@ -447,10 +447,10 @@ export default function Home() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
           {[
-            { id: 'cham-soc-da', label: 'Chăm sóc da', image: 'https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=600&auto=format&fit=crop' },
-            { id: 'trang-diem', label: 'Trang điểm', image: 'https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?q=80&w=600&auto=format&fit=crop' },
-            { id: 'nuoc-hoa', label: 'Nước hoa', image: 'https://images.unsplash.com/photo-1541643600914-78b084683601?q=80&w=600&auto=format&fit=crop' },
-            { id: 'cham-soc-co-the', label: 'Chăm sóc cơ thể', image: 'https://images.unsplash.com/photo-1549439602-43ebcb232811?q=80&w=600&auto=format&fit=crop' }
+            { id: 'cham-soc-da', label: 'Chăm sóc da', image: 'https://s3-ap-southeast-1.amazonaws.com/lixibox-production-uploads/blogs/pictures/18440/original_1692762586.jpg' },
+            { id: 'trang-diem', label: 'Trang điểm', image: 'https://image.made-in-china.com/380f0j00yfGRNKUFhtlk/What-Surprising-Secrets-Do-Makeup-Sets-Hold-for-Global-Buyers-in-2026-.jpg' },
+            { id: 'nuoc-hoa', label: 'Nước hoa', image: 'https://cdn.s99.vn/ss1/prod/product/70dd53015626f1158d1090459177d62b.jpg' },
+            { id: 'cham-soc-co-the', label: 'Chăm sóc cơ thể', image: 'https://cdn.s99.vn/ss0/prod/product/138ac0a2f51b473db2548738da83241b.jpg' }
           ].map((cat, idx) => (
             <motion.button
               key={cat.id}
@@ -466,8 +466,8 @@ export default function Home() {
                 className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 scale-100 group-hover:scale-110" 
                 alt={cat.label}
               />
-              <div className="absolute inset-0 flex items-center justify-center bg-black/20 group-hover:bg-black/40 transition-colors duration-500">
-                <h3 className="text-xl md:text-2xl font-bold text-white px-4 text-center transition-transform duration-500 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">{cat.label}</h3>
+              <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/50 transition-colors duration-500">
+                <h3 className="text-2xl md:text-4xl font-black text-white px-4 text-center transition-transform duration-500 drop-shadow-[0_4px_8px_rgba(0,0,0,0.7)] uppercase tracking-tighter">{cat.label}</h3>
               </div>
               <div className="absolute inset-0 border-4 border-transparent group-hover:border-white/20 transition-all duration-500 rounded-[2.5rem]"></div>
             </motion.button>
