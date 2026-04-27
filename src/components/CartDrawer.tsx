@@ -4,10 +4,31 @@ import { useCart } from '../context/CartContext';
 import { formatPrice, cn } from '../lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
+import { db } from '../lib/firebase';
+import { collection, query, limit, getDocs } from 'firebase/firestore';
+import { Product } from '../types';
 
 export default function CartDrawer() {
   const { isCartOpen, setIsCartOpen, cart, removeFromCart, updateQuantity, totalAmount } = useCart();
   const navigate = useNavigate();
+  const [giftProduct, setGiftProduct] = React.useState<Product | null>(null);
+
+  React.useEffect(() => {
+    const fetchGift = async () => {
+      if (totalAmount >= 1000000 && !giftProduct) {
+        try {
+          const q = query(collection(db, 'products'), limit(1));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            setGiftProduct({ id: snap.docs[0].id, ...snap.docs[0].data() } as Product);
+          }
+        } catch (err) {
+          console.error("Lỗi lấy quà tặng:", err);
+        }
+      }
+    };
+    fetchGift();
+  }, [totalAmount, giftProduct]);
 
   return (
     <AnimatePresence>
@@ -97,6 +118,45 @@ export default function CartDrawer() {
                     </div>
                   </div>
                 ))
+              )}
+
+              {/* Thanh tiến trình nhận quà */}
+              {cart.length > 0 && totalAmount < 5000000 && (
+                <div className="p-4 bg-slate-50 rounded-2xl border border-dashed border-brand-200 space-y-2">
+                  <div className="flex justify-between text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    <span>Tiến trình nhận quà</span>
+                    <span>{totalAmount < 1000000 ? `Thiếu ${formatPrice(1000000 - totalAmount)}` : `Thiếu ${formatPrice(5000000 - totalAmount)}`}</span>
+                  </div>
+                  <div className="w-full h-1.5 bg-white rounded-full overflow-hidden border border-brand-50">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${(totalAmount / (totalAmount < 1000000 ? 1000000 : 5000000)) * 100}%` }}
+                      className="h-full bg-brand-400"
+                    />
+                  </div>
+                  <p className="text-[10px] text-gray-400 italic">
+                    {totalAmount < 1000000 ? "• Mua thêm để nhận Mẫu thử Premium" : "• Sắp nhận được Combo dưỡng da cao cấp!"}
+                  </p>
+                </div>
+              )}
+
+              {totalAmount >= 1000000 && cart.length > 0 && (
+                <div className="flex gap-4 p-4 bg-brand-50 rounded-2xl border border-brand-100 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 bg-brand-500 text-white text-[8px] font-black px-2 py-1 rounded-bl-xl">FREE GIFT</div>
+                  <div className="w-20 h-24 rounded-xl overflow-hidden bg-white border border-brand-50 shrink-0 flex items-center justify-center">
+                     <img 
+                       src={giftProduct?.imageUrl || "https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=200"} 
+                       className="w-full h-full object-cover" 
+                     />
+                  </div>
+                  <div className="flex-grow space-y-1">
+                    <h4 className="text-xs font-bold text-brand-600 uppercase tracking-tight">
+                      {totalAmount >= 5000000 ? `VIP: ${giftProduct?.name || 'Quà cao cấp'}` : (giftProduct?.name || 'Mẫu thử Premium')}
+                    </h4>
+                    <p className="text-[10px] text-gray-500 italic">Quà tặng đi kèm đơn hàng của bạn</p>
+                    <p className="text-sm font-black text-brand-500">Miễn phí</p>
+                  </div>
+                </div>
               )}
             </div>
 

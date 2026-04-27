@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, serverTimestamp, doc, writeBatch, increment, getDoc } from 'firebase/firestore';
+import { collection, serverTimestamp, doc, writeBatch, increment, getDoc, query, limit, getDocs } from 'firebase/firestore';
 import { db, auth } from '../lib/firebase';
 import { useCart } from '../context/CartContext';
 import { formatPrice, cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
 import { motion } from 'motion/react';
 import { CreditCard, Truck, ShieldCheck, CheckCircle2, ChevronDown } from 'lucide-react';
+import { Product } from '../types';
 
 export default function Checkout() {
   const { cart, totalAmount, clearCart, setIsLoginModalOpen } = useCart();
@@ -20,6 +21,24 @@ export default function Checkout() {
     note: ''
   });
   const navigate = useNavigate();
+  const [giftProduct, setGiftProduct] = useState<Product | null>(null);
+
+  useEffect(() => {
+    const fetchGift = async () => {
+      if (totalAmount >= 1000000) {
+        try {
+          const q = query(collection(db, 'products'), limit(1));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            setGiftProduct({ id: snap.docs[0].id, ...snap.docs[0].data() } as Product);
+          }
+        } catch (err) {
+          console.error(err);
+        }
+      }
+    };
+    fetchGift();
+  }, [totalAmount]);
 
   useEffect(() => {
     if (cart.length === 0 && !orderSuccess) {
@@ -82,12 +101,29 @@ export default function Checkout() {
       }
 
       const batch = writeBatch(db);
-      const items = cart.map(i => ({ 
+      let items = cart.map(i => ({ 
         id: i.id, 
         name: i.name, 
         quantity: i.quantity, 
         price: i.onFlashSale ? i.price * (1 - (i.flashSaleDiscount || 25) / 100) : i.price 
       }));
+
+      // Tự động thêm quà tặng dựa trên tổng tiền
+      if (totalAmount >= 5000000) {
+        items.push({
+          id: 'GIFT-VIP',
+          name: `QUÀ TẶNG VIP: ${giftProduct?.name || 'Combo cao cấp'}`,
+          quantity: 1,
+          price: 0
+        });
+      } else if (totalAmount >= 1000000) {
+        items.push({
+          id: 'GIFT-BASIC',
+          name: `QUÀ TẶNG: ${giftProduct?.name || 'Mẫu thử Premium'}`,
+          quantity: 1,
+          price: 0
+        });
+      }
       
       const currentFinalTotal = finalTotal;
       const currentMemo = qrMemoBase;
@@ -223,6 +259,31 @@ export default function Checkout() {
                     <span className="text-sm font-black">{formatPrice((item.onFlashSale ? item.price * (1 - (item.flashSaleDiscount || 25) / 100) : item.price) * item.quantity)}</span>
                   </div>
                 ))}
+                
+                {/* Hiển thị quà tặng trong danh sách items */}
+                {totalAmount >= 5000000 ? (
+                  <div className="flex gap-4 p-4 bg-red-50/50 rounded-2xl border border-red-100 items-center">
+                    <div className="w-12 h-12 rounded-lg bg-white p-1 shrink-0 shadow-sm">
+                      <img src={giftProduct?.imageUrl || "https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?q=80&w=100"} className="w-full h-full object-cover rounded-md" />
+                    </div>
+                    <div className="flex-grow">
+                      <p className="text-xs font-bold text-red-600 uppercase">QUÀ TẶNG VIP</p>
+                      <p className="text-[10px] text-gray-500 italic">{giftProduct?.name || 'Combo dưỡng da cao cấp'}</p>
+                    </div>
+                    <span className="text-xs font-black text-red-600 uppercase">Miễn phí</span>
+                  </div>
+                ) : totalAmount >= 1000000 ? (
+                  <div className="flex gap-4 p-4 bg-brand-50/50 rounded-2xl border border-brand-100 items-center">
+                    <div className="w-12 h-12 rounded-lg bg-white p-1 shrink-0 shadow-sm">
+                      <img src={giftProduct?.imageUrl || "https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=100"} className="w-full h-full object-cover rounded-md" />
+                    </div>
+                    <div className="flex-grow">
+                      <p className="text-xs font-bold text-brand-600 uppercase">QUÀ TẶNG</p>
+                      <p className="text-[10px] text-gray-400 italic">{giftProduct?.name || 'Mẫu thử Premium'}</p>
+                    </div>
+                    <span className="text-xs font-black text-brand-600 uppercase">Miễn phí</span>
+                  </div>
+                ) : null}
               </div>
               <div className="space-y-6 pt-10 border-t border-gray-50">
                 <div className="space-y-3 font-medium text-sm text-gray-500">

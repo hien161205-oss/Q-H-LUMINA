@@ -34,10 +34,13 @@ export default function ProductDetail() {
           
           // Fetch gift item (cheapest product)
           const productsRef = collection(db, 'products');
-          const giftQuery = query(productsRef, orderBy('price'), limit(1));
+          // Sử dụng limit(5) để lấy danh sách rồi chọn sản phẩm khác với sản phẩm hiện tại
+          const giftQuery = query(productsRef, limit(5));
           const giftSnap = await getDocs(giftQuery);
           if (!giftSnap.empty) {
-            setGiftItem({ id: giftSnap.docs[0].id, ...giftSnap.docs[0].data() } as Product);
+            const potentialGifts = giftSnap.docs.map(d => ({ id: d.id, ...d.data() } as Product));
+            const selectedGift = potentialGifts.find(p => p.id !== id) || potentialGifts[0];
+            setGiftItem(selectedGift);
           }
           
           const reviewsRef = collection(db, 'reviews');
@@ -218,7 +221,7 @@ export default function ProductDetail() {
                     <div className="w-12 h-12 rounded bg-brand-50 flex-shrink-0 overflow-hidden border border-brand-100">
                        <img src={giftItem?.imageUrl || "https://images.unsplash.com/photo-1556228720-195a672e8a03?q=80&w=200"} className="w-full h-full object-cover" />
                     </div>
-                    <p className="text-xs text-gray-600 leading-tight italic">Ưu đãi đặc biệt: Tặng kèm {giftItem?.name || 'mẫu thử cao cấp'} cho mỗi đơn hàng từ 500k.</p>
+                    <p className="text-xs text-gray-600 leading-tight italic">Ưu đãi đặc biệt: Tặng kèm {giftItem?.name || 'mẫu thử cao cấp'} cho mỗi đơn hàng từ 1tr.</p>
                   </div>
                 </div>
 
@@ -226,13 +229,13 @@ export default function ProductDetail() {
                   <div className="absolute top-0 left-0 w-1 h-full bg-red-400"></div>
                   <div className="flex items-center space-x-3 mb-2">
                     <ShieldCheck className="w-5 h-5 text-red-500" />
-                    <span className="text-xs font-black text-red-600 uppercase tracking-widest">QUÀ TẶNG CHO ĐƠN TỪ 1 TRIỆU</span>
+                    <span className="text-xs font-black text-red-600 uppercase tracking-widest">QUÀ TẶNG CHO ĐƠN TỪ 5 TRIỆU</span>
                   </div>
                   <div className="flex items-center space-x-3">
                     <div className="w-12 h-12 rounded bg-red-50 flex-shrink-0">
                        <img src="https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?q=80&w=200" className="w-full h-full object-cover opacity-50" />
                     </div>
-                    <p className="text-xs text-gray-600 leading-tight">Cơ hội nhận thêm quà tặng cao cấp cho đơn hàng từ 1,000,000đ.</p>
+                    <p className="text-xs text-gray-600 leading-tight">Cơ hội nhận thêm quà tặng cao cấp cho đơn hàng từ 5,000,000đ.</p>
                   </div>
                 </div>
               </div>
